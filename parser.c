@@ -869,7 +869,9 @@ static int parse_return(int token, int *return_value)
     }
 
     // #debug
-    itoa ( (int) eval_ret, buffer );
+    // #todo: We got to store this value,
+    // probably into the object structure
+    // itoa ( (int) eval_ret, buffer );
     //printf("parse_return: value={%s}\n",buffer);
 
 //

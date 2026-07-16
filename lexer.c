@@ -670,7 +670,13 @@ again:
                 value = (int) TK_TYPE;
                 goto done;
             }
-            if ( strncmp( real_token_buffer, "meta", 4 ) == 0 )
+            // #bugbug
+            // In this case, symbols like meta1 can cause problems
+            // and they will be seen like a 'meta' instead of meta1.
+            // #todo:
+            // Maybe we gotta change strncmp for strcmp in all the comparisons.
+            //if ( strncmp( real_token_buffer, "meta", 4 ) == 0 )
+            if ( strcmp( real_token_buffer, "meta" ) == 0 )
             {
                 keyword_found = KWMETA;
                 type_found    = TMETA;
