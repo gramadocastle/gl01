@@ -29,12 +29,11 @@ all:
 
 # Build the final destination
 	-mkdir build/
-	-cp ./$(linkTarget)                build/
-	-cp ./assets/examples/THEME1.CNF   build/
-	-cp ./assets/examples/TEST1.CNF    build/
-	-cp ./assets/usage.txt             build/
-	-cp ./assets/Makefile              build/
-	-cp ./assets/LOAD.TXT              build/
+	-cp ./$(linkTarget)            build/
+	-cp ./assets/examples/*.CNF    build/
+	-cp ./assets/usage.txt         build/
+	-cp ./assets/Makefile          build/
+	-cp ./assets/LOAD.TXT          build/
 	rm *.o  
 
 	@echo "Go to build/ folder and type make";
