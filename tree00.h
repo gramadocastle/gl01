@@ -29,11 +29,12 @@ struct node_d
     struct node_d *right;
 }; 
 
+
 // Stack
 struct stack_d
 {
-    int  top;         // stays int — it's just an index (0..32), no need to widen
-    long items[32];   // was int — this is what actually holds computed values
+    int top;
+    int items[32];
 };
 
 

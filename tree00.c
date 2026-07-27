@@ -7,20 +7,18 @@
 
 #include "gramcnf.h"
 
-// Holds tokens of the expression in order (numbers/operators)
+// ??
+// #importante
 // #expressão em ordem!
 // Os tokens serão colocados aqui como uma expressão em ordem.
-static long exp_buffer[32];        // was int
-static int  exp_type_buffer[32];   // stays int — it only ever holds DT_DIGIT/DT_OPERATOR
-
-// Current position in exp_buffer
+static int exp_buffer[32];
 int exp_offset=0;
 
 //====================================================================
 // Buffer pra fazer conta usando 'pos order'.
-static int DT_BUFFER[32];   // Data type buffer (digit/operator/invalid)
-static int POS_BUFFER[32];  // Post-order buffer used for evaluation
-int buffer_offset = 0;      // Position in POS_BUFFER
+static int DT_BUFFER[32];
+static int POS_BUFFER[32];
+int buffer_offset = 0;
 //====================================================================
 
 
@@ -36,13 +34,15 @@ static void exibirPosOrdemAndInclude (struct node_d *node);
 static void inorder(struct node_d *root);
 static struct node_d *newNode(int data_type, int data);
 static struct node_d *insert( struct node_d* node, int data_type, int data );
-static void push( struct stack_d *s, long x );
-static long pop (struct stack_d *s);
-static long oper(char c, long opnd1, long opnd2);
-static int is_high_precedence(char op);
-static long __eval_linear(void);
+static void push( struct stack_d *s, int x );
+static int pop (struct stack_d *s);
+static int oper(char c, int opnd1, int opnd2);
+static int __eval(void);
 static int bst_initialize(void);
 static void treeInitializeGlobals(void);
+
+
+
 
 // ==============================================
 
@@ -218,31 +218,20 @@ static struct node_d *insert( struct node_d* node, int data_type, int data )
 
 // bst_initialize:
 // Initialize the BST.
-
-// Role: Builds a binary tree from the tokens in exp_buffer.
-// Steps:
-// + Splits tokens into digits (buffer_digits) and operators (buffer_op).
-// + Creates a root node.
-// + Inserts all operators into the tree.
-// + Inserts all digits into the tree.
-// + Traverses the tree in post-order (exibirPosOrdemAndInclude) to fill POS_BUFFER.
-// Note: This is a simplified tree builder; it doesn’t yet handle precedence correctly.
-
-
 static int bst_initialize(void)
 {
     struct node_d *root = NULL; 
 
-// Buffer para dígitos
-    long buffer_digits[32];
+// Buffer para dígitos.
+    int buffer_digits[32];
     int buffer_digits_offset=0;
 
-// Buffer para operadores
+// Buffer para operadores.
     int buffer_op[32];
     int buffer_op_offset=0;
 
     register int i=0;
-    long MyLongInteger = 0;
+    int MyInteger = 0;
     char opCH=0;
 
 // Global
@@ -265,27 +254,60 @@ static int bst_initialize(void)
     //printf ("for:: \n");
 
     int is_operator=FALSE;
-
-    for ( i=0; i<exp_offset; i++ )
+    // Number of elements found in the expression
+    //for ( i=0; i<32;  i++ )
+    for ( i=0; i<exp_offset;  i++ )
     {
-        MyLongInteger = (long) exp_buffer[i];
+        MyInteger = (int) exp_buffer[i];
+        opCH = (char) (MyInteger & 0xFF);
 
-        if (exp_type_buffer[i] == DT_OPERATOR)
+        switch (opCH)
         {
-            buffer_op[buffer_op_offset] = (int) (MyLongInteger & 0xFF);
+            // Operators
+            // Get the valid operators and upt them all into the 
+            // expression buffer.
+            case '+':  case '-':  case '*':  case '/':
+            case '&':  case '|':
+            case '<':  case '>':
+            case '%':
+            case '^':
+            case '!':
+            case '=':
+                is_operator = TRUE;
+                buffer_op[buffer_op_offset] = (int) (MyInteger & 0xFF);
+                buffer_op_offset++;
+                break;
+            default:
+                is_operator = FALSE;
+                buffer_digits[buffer_digits_offset] = (int) MyInteger;
+                buffer_digits_offset++; 
+                break;
+        }
+
+        /*
+        // #bugbug
+        // Here the numbers are integers of 32bit.
+        // buffer1[] para Numbers.
+        if (is_operator == TRUE){
+            //printf(">");  //#debug
+            // dígito
+            buffer_digits[buffer_digits_offset] = (int) MyInteger;
+            buffer_digits_offset++; 
+
+        // Here are the operators.
+        // buffer_op[] para Operators.
+        }else if(is_operator == FALSE){
+            //printf("$");  //#debug
+            // operadores
+            buffer_op[buffer_op_offset] = (int) MyInteger;
             buffer_op_offset++;
         }
-        else // DT_DIGIT
-        {
-            buffer_digits[buffer_digits_offset] = (long) MyLongInteger;
-            buffer_digits_offset++;
-        }
-    }
-
+        */
+    };
 
 // Visualizar os buffer,
 // pra depois manipular eles.
-    buffer_digits[buffer_digits_offset] = (long) 0;  // Digitos
+    buffer_digits[buffer_digits_offset] = (int) 0;  // Digitos
         buffer_op[buffer_op_offset]     = (int) 0;  // Operadores
 
     //printf("total_digits=%d total_op=%d\n", 
@@ -316,10 +338,10 @@ static int bst_initialize(void)
         i<buffer_op_offset; 
         i++ )
     {   
-        int xxxMyOp = (int) buffer_op[i];
-        xxxMyOp = (int) (xxxMyOp & 0xFF); 
+        MyInteger = (int) buffer_op[i];
+        MyInteger = (int) (MyInteger & 0xFF); 
         // Insert an operator into the tree.    
-        insert(root,  DT_OPERATOR, xxxMyOp);
+        insert(root,  DT_OPERATOR, MyInteger);
     };
 
 // -----------------------------------
@@ -334,9 +356,9 @@ static int bst_initialize(void)
         i<buffer_digits_offset; 
         i++ )
     {
-        MyLongInteger = (long) buffer_digits[i];    // Redundante
+        MyInteger = (int) buffer_digits[i];    // Redundante
         // Insert a digit into the tree.
-        insert ( root, DT_DIGIT, MyLongInteger );
+        insert ( root, DT_DIGIT, MyInteger );
     };
 
 // #OK 
@@ -383,7 +405,7 @@ static int bst_initialize(void)
 
 //====================================================================
 
-static void push( struct stack_d *s, long x )
+static void push( struct stack_d *s, int x )
 {
 
 // Parameter
@@ -403,15 +425,15 @@ static void push( struct stack_d *s, long x )
     // #debug
     //printf(">>>> PUSH %d into %d\n", x, s->top);
 
-    s->items[ s->top ] = (long) x;
+    s->items[ s->top ] = (int) x;
 
     if (s->top < 32)
         s->top++;
 }
 
-static long pop(struct stack_d *s)
+static int pop(struct stack_d *s)
 {
-    long Value=0;
+    int Value=0;
 
 // Parameter
     if ((void*) s == NULL){
@@ -427,7 +449,7 @@ static long pop(struct stack_d *s)
         return 0;  //??
     }
     
-    Value = (long) s->items[s->top];
+    Value = (int) s->items[s->top];
 
     // #debug
     //printf("<<<< POP %d from %d\n", Value, s->top );
@@ -435,11 +457,12 @@ static long pop(struct stack_d *s)
     if (s->top > 0)
         s->top--;
 
-    return (long) Value;
+    return (int) Value;
 }
 
-static long oper(char c, long opnd1, long opnd2)
+static int oper(char c, int opnd1, int opnd2)
 {
+
     printf("oper: OPERATOR=%c o1=%d o2=%d \n",
         c, opnd1, opnd2 );
 
@@ -489,90 +512,115 @@ static long oper(char c, long opnd1, long opnd2)
     };
 }
 
-// Returns TRUE if op is a "tight-binding" operator (evaluated first pass)
-static int is_high_precedence(char op)
+// Internal worker
+static int __eval(void)
 {
-    return (op == '*' || op == '/' || op == '%');
-}
+    register int i=0;
+    int opnd1=0;
+    int opnd2=0; 
+    int val=0;
+    struct stack_d stk;
 
-// __eval_linear:
-// Two-pass evaluator over exp_buffer[]/exp_type_buffer[].
-// Pass 1: resolve all '*','/','%' pairs left-to-right, collapsing
-//         each into a single digit in a working buffer.
-// Pass 2: resolve remaining '+','-' (and other ops) left-to-right.
-// This gives correct precedence for the common arithmetic case
-// without a full parser. Still left-to-right within same precedence
-// tier, and doesn't handle parentheses regrouping.
-static long __eval_linear(void)
-{
-    long work_val[32];
-    char work_op[32];
-    int work_count = 0;   // number of values in work_val
-    int i;
+    /*
+    //printf("eval: Show DT_BUFFER[] and POS_BUFFER[]\n");
+    // O elemento extra é o root node.
+    for (i=0; i<(exp_offset+1); i++){
+        printf("%d %d\n", DT_BUFFER[i], POS_BUFFER[i]);
+    };
+    */
 
-    if (exp_offset == 0){
-        printf("__eval_linear: empty expression\n");
-        return 0;
-    }
-    if (exp_type_buffer[0] != DT_DIGIT){
-        printf("__eval_linear: expected digit at position 0\n");
-        exit(1);
-    }
+    memset( &stk, 0, sizeof(struct stack_d) );
+    //stk.top = -1;
+    stk.top = 0;
+    //stk.top = 1;
 
-    // ---- Pass 1: high precedence (* / %) ----
-    work_val[0] = exp_buffer[0];
-    work_count = 1;
+// Parameter
+    //if ( (void*) buff == NULL)
+        //return -1;
 
-    i = 1;
-    while (i < exp_offset)
+    int is_operator=FALSE;
+    int MyInteger = 0;
+    char opCH=0;
+    char opCHSaved=0;
+    int MyDT = 0;
+
+    int OperatorFound=FALSE;
+    int DigitCounter = 0;
+
+    //for ( i=0; (c = buff[i]) != '?'; i++ )
+    for ( 
+        i=0; 
+        i < (exp_offset + 1);  // Porque incluimos o 'root' na tree. 
+        i++ )
     {
-        char op;
-        int rhs;
+        MyDT      = (int)  DT_BUFFER[i];
+        MyInteger = (int) POS_BUFFER[i];
+        opCH = (char) (MyInteger & 0xFF);
 
-        if (exp_type_buffer[i] != DT_OPERATOR){
-            printf("__eval_linear: expected operator at position %d\n", i);
-            exit(1);
-        }
-        op = (char) (exp_buffer[i] & 0xFF);
-        i++;
+        // #ORDER:
+        // The operator come first and then two digits.
+        // #todo: We need to redo it each operator found.
 
-        if (i >= exp_offset || exp_type_buffer[i] != DT_DIGIT){
-            printf("__eval_linear: expected digit after operator at position %d\n", i);
-            exit(1);
-        }
-        rhs = exp_buffer[i];
-        i++;
-
-        if (is_high_precedence(op))
+        switch (opCH)
         {
-            // Fold immediately into the last collected value
-            work_val[work_count-1] = oper(op, work_val[work_count-1], rhs);
-        }
-        else
-        {
+            // Operators
+            // Get the valid operators and upt them all into the 
+            // expression buffer.
+            case '+':  case '-':  case '*':  case '/':
+            case '&':  case '|':
+            case '<':  case '>':
+            case '%':
+            case '^':
+            case '!':
+            case '=':
+                is_operator = TRUE;
+                if (MyDT != DT_OPERATOR){
+                    printf("__eval: Expected DT_OPERATOR data type in %d\n",i);
+                    exit(1);
+                }
+                opCHSaved = opCH;
+                OperatorFound = TRUE;
+                break;
 
-            // #todo:
-            // Defer: keep operator and rhs for pass 2
-            //if (work_count >= 32){
-            //    printf("__eval_linear: expression too long (max 32 terms)\n");
-            //    exit(1);
-            //}
+            // The root entrie in the tree
+            // ignore
+            case 'R':
+                is_operator = -1;
+                if (MyDT != DT_INVALID){
+                    printf("__eval: Expected DT_INVALID data type in %d\n",i);
+                    exit(1);
+                }
+                break;
 
-            // Defer: keep operator and rhs for pass 2
-            work_op[work_count-1] = op;   // op that precedes work_val[work_count]
-            work_val[work_count] = rhs;
-            work_count++;
+            default:
+                is_operator = FALSE;
+                if (MyDT != DT_DIGIT){
+                    printf("__eval: Expected DT_DIGIT data type in %d\n",i);
+                    exit(1);
+                }
+                DigitCounter++;
+                //printf(">>>>PUSH digit\n");
+                push( &stk, (int) MyInteger );
+                if (OperatorFound == TRUE)
+                {
+                    if (DigitCounter == 2)
+                    {
+                        stk.top--;  // Get last included
+                        opnd2 = (int) pop(&stk);
+                        opnd1 = (int) pop(&stk);
+                        val = (int) oper( (char) opCHSaved, opnd1, opnd2 );
+                        //printf("__eval: value={%d}\n",val);
+                        push( &stk, val );  // Push result
+                    }
+                }
+                break;
         }
     }
 
-    // ---- Pass 2: remaining low precedence (+ - etc.) left to right ----
-    long result = work_val[0];
-    for (i = 1; i < work_count; i++)
-    {
-        result = oper(work_op[i-1], result, work_val[i]);
-    }
-
-    return (long) result;
+// O resultado é o que sobrou na pilha
+    stk.top--;  // Get last included.
+    int FinalValue = (int) pop(&stk);
+    return (int) FinalValue;
 }
 
 static void treeInitializeGlobals(void)
@@ -580,10 +628,8 @@ static void treeInitializeGlobals(void)
     register int i=0;
 
 // Expression buffer
-    for (i=0; i<32; i++)
-    {
+    for (i=0; i<32; i++){
         exp_buffer[i]=0;
-        exp_type_buffer[i]=0;
     };
     exp_offset = 0;
 
@@ -622,17 +668,6 @@ static void treeInitializeGlobals(void)
 // os dados s�o transferidos para o buffer POS_BUFFER[].
 // Calcula o resultado chamando eval();
 
-// Role: Entry point for evaluating an expression.
-// Steps:
-// + Initializes buffers (treeInitializeGlobals).
-// + Reads tokens from the lexer (yylex).
-// + Fills exp_buffer with constants and operators.
-// + Detects ; → end of expression.
-// + Calls bst_initialize() to build a tree.
-// + Calls __eval() to compute the final value.
-// Shortcut: If only one constant is found before ;, 
-// the stack evaluation just returns that constant.
-
 unsigned long tree_eval(void)
 {
 // >> This function gets the expression from stdin?
@@ -650,17 +685,6 @@ unsigned long tree_eval(void)
 
     treeInitializeGlobals();
 
-
-// State Machine in tree_eval()
-// State 1: Expecting a number.
-//   If TK_CONSTANT, store it in exp_buffer.
-//   Then switch to State 2.
-// State 2: Expecting operator or separator.
-//   If operator (+, -, etc.), store it and go back to State 1.
-//   If separator ;, jump to evaluation.
-// Shortcut: For "1;", State 2 sees ; and ends immediately, 
-// leaving only one digit in the buffer.
-
     while (running == 1){
 
     // Get from stdin.
@@ -677,17 +701,12 @@ unsigned long tree_eval(void)
 
     // ';' was found. 
     // End of statement.
-    // Shortcut:
-    // If we only saw one constant before ';',
-    // bst_initialize() will build a trivial tree
-    // and __eval() will just return that constant.
-
     if (c == TK_SEPARATOR)
     {
         if ( strncmp ( (char *) real_token_buffer, ";", 1 ) == 0  )
         {
-            //printf("tree_eval: ';' was found in State %d\n",State);
-            exp_buffer[exp_offset] = (long) 0;
+            //printf("tree_eval: ';' was found!\n");
+            exp_buffer[exp_offset] = (int) 0;
             //exp_offset++;
             goto do_bst;
         }
@@ -697,15 +716,11 @@ unsigned long tree_eval(void)
     
     // State1: Numbers.
     case 1:
-        //printf("tree_eval: entering State %d, token=%d (%s)\n", 
-            //State, c, real_token_buffer);
         switch (c){
 
         // Constants: Números ou separadores.
         case TK_CONSTANT:
-            //exp_buffer[exp_offset] = (int) atoi(real_token_buffer);
-            exp_buffer[exp_offset] = (long) strtol(real_token_buffer, NULL, 0);
-            exp_type_buffer[exp_offset] = DT_DIGIT;      // <-- tag it
+            exp_buffer[exp_offset] = (int) atoi(real_token_buffer);
             exp_offset++;
             // Depois de um numero espera-se 
             // um operador ou um separador.
@@ -717,7 +732,7 @@ unsigned long tree_eval(void)
         case TK_SEPARATOR:
             if ( strncmp( (char *) real_token_buffer, ";", 1 ) == 0  )
             {
-                exp_buffer[exp_offset] = (long) 0;
+                exp_buffer[exp_offset] = (int) 0;
                 //exp_offset++;
                 goto do_bst;  // #done
             }
@@ -732,10 +747,7 @@ unsigned long tree_eval(void)
         break;
 
     // State2: Operators and separators.
-    // In the case of a ';' we return the value found in the state 1.
     case 2:
-        //printf("tree_eval: entering State %d, token=%d (%s)\n", 
-            //State, c, real_token_buffer);
         switch (c){
         
         // Operators
@@ -748,9 +760,7 @@ unsigned long tree_eval(void)
         case '^':
         case '!':
         case '=':
-            exp_buffer[exp_offset] = (long) (c & 0xFF);
-            //exp_buffer[exp_offset] = (int) c;
-            exp_type_buffer[exp_offset] = DT_OPERATOR;   // <-- tag it
+            exp_buffer[exp_offset] = (int) c;
             exp_offset++;
             // Depois do operador esperamos 
             // um n�mero ou um separador ')' ou 
@@ -765,7 +775,7 @@ unsigned long tree_eval(void)
             // ')'
             if ( strncmp( (char *) real_token_buffer, ")", 1 ) == 0  )
             {
-                exp_buffer[exp_offset] = (long) 0;
+                exp_buffer[exp_offset] = (int) 0;
                 //exp_offset++;
                 goto do_bst;  // #done
             }
@@ -773,7 +783,7 @@ unsigned long tree_eval(void)
             if ( strncmp( (char *) real_token_buffer, ";", 1 ) == 0  )
             {
                 //printf("tree_eval: ';' was found\n");
-                exp_buffer[exp_offset] = (long) 0;
+                exp_buffer[exp_offset] = (int) 0;
                 //exp_offset++;
                 goto do_bst;  // #done
             }
@@ -784,14 +794,12 @@ unsigned long tree_eval(void)
             if (LexerInfo.lexer_expression == LT_EXPR)
             {
                 exp_buffer[exp_offset] = (int) '<';
-                exp_type_buffer[exp_offset] = DT_OPERATOR;   // <-- add this
                 exp_offset++;
                 State=1;
             }
             if (LexerInfo.lexer_expression == GT_EXPR)
             {
                 exp_buffer[exp_offset] = (int) '>';
-                exp_type_buffer[exp_offset] = DT_OPERATOR;   // <-- add this
                 exp_offset++;
                 State=1;
             }
@@ -807,8 +815,7 @@ unsigned long tree_eval(void)
         printf("tree_eval: Default State\n");
         break;
     };
-
-    };  // While end
+    };  // While end.
 
 
 //
@@ -816,14 +823,6 @@ unsigned long tree_eval(void)
 //
 
 do_bst:
-
-// If no tokens were collected, return 0 as default
-    if (exp_offset == 0) 
-    {
-        printf("tree_eval: [do_bst] empty expression before ';' (line %d)\n",
-           LexerInfo.current_line );
-        return 0;  // or handle as an error
-    }
 
 //==================================================
 // #debug
@@ -855,7 +854,7 @@ do_bst:
 // Pega uma expressão que está em um buffer e 
 // prepara o buffer POS_BUFFER para eval() usar.
 
-    // bst_initialize(); 
+    bst_initialize(); 
 
 //#debug
 //ok funcionou
@@ -870,14 +869,9 @@ do_bst:
 // Eval
 //
 
-    // Old version #delete
-    // This is the moment where we get the final result
-    //unsigned long ret_val=0;
-    //ret_val = (unsigned long) __eval(); 
-
+// This is the moment where we get the final result
     unsigned long ret_val=0;
-    ret_val = (unsigned long) __eval_linear();
-
+    ret_val = (unsigned long) __eval(); 
     //printf("result: >>>>> %d\n",ret_val);
     return (unsigned long) ret_val; 
 done:
